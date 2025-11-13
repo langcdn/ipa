@@ -35,7 +35,7 @@ export default async function handler(req, res) {
     });
   }
 
-  // ==== GET Data Pengantin per filter ====
+  // ==== GET Data Pengantin ====
   if (req.method === "GET") {
     try {
       const data = await getData();
@@ -48,7 +48,8 @@ export default async function handler(req, res) {
       }
 
       if (namaPasangan) {
-        const found = data.find((p) => p.namaPasangan.toLowerCase() === namaPasangan.toLowerCase());
+        const slug = namaPasangan.toLowerCase();
+        const found = data.find((p) => p.namaPasangan.toLowerCase() === slug);
         if (!found) return res.status(404).json({ error: "Data pengantin tidak ditemukan" });
         return res.status(200).json(found);
       }
@@ -59,7 +60,6 @@ export default async function handler(req, res) {
         return res.status(200).json(found);
       }
 
-      // Tidak ada filter → kosongkan
       return res.status(200).json([]);
     } catch (err) {
       console.error("❌ GET Error:", err);
@@ -75,24 +75,59 @@ export default async function handler(req, res) {
         req.on("data", (chunk) => (body += chunk));
         req.on("end", resolve);
       });
-      const { id, namaPasangan, temaUndangan, paketUndangan, masaAktif, foto, email, sandi } = JSON.parse(body || "{}");
+
+      const {
+        id,
+        namaPasangan,
+        temaUndangan,
+        paketUndangan,
+        masaAktif,
+        foto,
+        email,
+        sandi,
+
+        // 🔥 Tambahan
+        upstash_url,
+        upstash_token
+      } = JSON.parse(body || "{}");
 
       if (!id || !namaPasangan || !temaUndangan || !paketUndangan || !masaAktif || !foto || !email || !sandi) {
         return res.status(400).json({ error: "Data pengantin tidak lengkap" });
       }
 
+      if (!upstash_url || !upstash_token) {
+        return res.status(400).json({
+          error: "upstash_url & upstash_token wajib diisi"
+        });
+      }
+
       const data = await getData();
-      data.push({ id, namaPasangan, temaUndangan, paketUndangan, masaAktif, foto, email, sandi });
+      data.push({
+        id,
+        namaPasangan,
+        temaUndangan,
+        paketUndangan,
+        masaAktif,
+        foto,
+        email,
+        sandi,
+        upstash_url,
+        upstash_token
+      });
+
       await saveData(data);
 
-      return res.status(200).json({ success: true, data: { id, namaPasangan, email } });
+      return res.status(200).json({
+        success: true,
+        data: { id, namaPasangan, upstash_url }
+      });
     } catch (err) {
       console.error("❌ POST Error:", err);
       return res.status(500).json({ error: "Gagal menyimpan data pengantin" });
     }
   }
 
-  // ==== PUT Update pengantin ====
+  // ==== PUT Update data pengantin ====
   if (req.method === "PUT") {
     try {
       let body = "";
@@ -100,6 +135,7 @@ export default async function handler(req, res) {
         req.on("data", (chunk) => (body += chunk));
         req.on("end", resolve);
       });
+
       const { id, ...updateData } = JSON.parse(body || "{}");
       if (!id) return res.status(400).json({ error: "ID pengantin wajib diisi" });
 
@@ -110,14 +146,17 @@ export default async function handler(req, res) {
       data[idx] = { ...data[idx], ...updateData };
       await saveData(data);
 
-      return res.status(200).json({ success: true, data: data[idx] });
+      return res.status(200).json({
+        success: true,
+        data: data[idx]
+      });
     } catch (err) {
       console.error("❌ PUT Error:", err);
       return res.status(500).json({ error: "Gagal update data pengantin" });
     }
   }
 
-  // ==== DELETE pengantin berdasarkan ID ====
+  // ==== DELETE pengantin ====
   if (req.method === "DELETE") {
     try {
       let body = "";
@@ -125,14 +164,19 @@ export default async function handler(req, res) {
         req.on("data", (chunk) => (body += chunk));
         req.on("end", resolve);
       });
+
       const { id } = JSON.parse(body || "{}");
       if (!id) return res.status(400).json({ error: "ID pengantin wajib diisi" });
 
       let data = await getData();
       data = data.filter((p) => p.id !== id);
+
       await saveData(data);
 
-      return res.status(200).json({ success: true, deleted: id });
+      return res.status(200).json({
+        success: true,
+        deleted: id
+      });
     } catch (err) {
       console.error("❌ DELETE Error:", err);
       return res.status(500).json({ error: "Gagal menghapus data pengantin" });
