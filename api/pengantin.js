@@ -1,9 +1,9 @@
 // api/pengantin.js
 export default async function handler(req, res) {
-  const UPSTASH_URL = "https://immune-civet-10584.upstash.io";
+  const UPSTASH_URL = "https://frank-warthog-24356.upstash.io";
   const AUTH_TOKEN =
     process.env.UPSTASH_AUTH_TOKEN ||
-    "Bearer ASlYAAIncDJhMjc4ZDRjYzU4NDM0M2E0OWUwY2Q0N2M3Y2RmZmI2ZnAyMTA1ODQ";
+    "Bearer AV8kAAIncDJjNTczNmNiM2U4MmQ0YTBjOWNjM2I1MjBkODA1ZTI2NnAyMjQzNTY";
 
   // ==== CORS ====
   res.setHeader("Access-Control-Allow-Origin", "*");
