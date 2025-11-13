@@ -1,9 +1,7 @@
 // api/pengantin.js
 export default async function handler(req, res) {
-  const UPSTASH_URL = "https://frank-warthog-24356.upstash.io";
-  const AUTH_TOKEN =
-    process.env.UPSTASH_AUTH_TOKEN ||
-    "Bearer AV8kAAIncDJjNTczNmNiM2U4MmQ0YTBjOWNjM2I1MjBkODA1ZTI2NnAyMjQzNTY";
+  const UPSTASH_URL = process.env.UPSTASH_URL;
+  const AUTH_TOKEN = process.env.UPSTASH_AUTH_TOKEN;
 
   // ==== CORS ====
   res.setHeader("Access-Control-Allow-Origin", "*");
