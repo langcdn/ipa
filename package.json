@@ -1,0 +1,25 @@
+{
+  "name": "rsvpku-api",
+  "version": "1.0.0",
+  "description": "API RSVP dan Buku Tamu untuk Undangan Digital menggunakan Upstash Redis dan Vercel",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vercel dev",
+    "start": "node index.js"
+  },
+  "keywords": [
+    "vercel",
+    "redis",
+    "upstash",
+    "rsvp",
+    "buku-tamu",
+    "undangan",
+    "api"
+  ],
+  "author": "mezurer",
+  "license": "MIT",
+  "dependencies": {
+    "node-fetch": "^3.3.2"
+  }
+}
