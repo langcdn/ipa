@@ -88,10 +88,10 @@ export default async function handler(req, res) {
         if (!found)
           return res.status(404).json({ error: "Data pengantin tidak ditemukan" });
 
-        return res.status(200).json({
-          email: found.email,
-          sandi: found.sandi,
-        });
+        // 🔥 ambil semua data, tapi hilangkan token
+        const { upstash_url, upstash_token, ...safeData } = found;
+
+        return res.status(200).json(safeData);
       }
 
       return res.status(200).json([]);
