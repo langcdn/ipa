@@ -9,12 +9,13 @@ export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   if (req.method === "OPTIONS") return res.status(200).end();
 
-  // ===== Fungsi bantu =====
+  // ===== Fungsi Bantu =====
   async function getData() {
     const r = await fetch(`${UPSTASH_URL}/get/pengantin`, {
       headers: { Authorization: AUTH_TOKEN },
     });
     const data = await r.json();
+
     try {
       return data.result ? JSON.parse(data.result) : [];
     } catch {
@@ -33,39 +34,69 @@ export default async function handler(req, res) {
     });
   }
 
-  // ==== GET Data Pengantin ====
+  // 🔒 Helper untuk menghapus data sensitif
+  function filterSensitive(data) {
+    if (!data) return null;
+    const { sandi, upstash_token, ...safe } = data;
+    return safe;
+  }
+
+  // ==== GET ====
   if (req.method === "GET") {
     try {
       const data = await getData();
-      const { id, namaPasangan, email } = req.query;
+      const { id, namaPasangan, email, tokenpasangan } = req.query;
 
+      // ⚡ NEW: tokenpasangan = namaPasangan
+      if (tokenpasangan) {
+        const slug = tokenpasangan.toLowerCase();
+        const found = data.find(
+          (p) => p.namaPasangan.toLowerCase() === slug
+        );
+
+        if (!found) {
+          return res.status(404).json({ error: "Token pasangan tidak valid" });
+        }
+
+        return res.status(200).json({
+          upstash_url: found.upstash_url || "",
+          upstash_token: found.upstash_token || ""
+        });
+      }
+
+      // === GET by ID ===
       if (id) {
         const found = data.find((p) => p.id === id);
         if (!found) return res.status(404).json({ error: "Data pengantin tidak ditemukan" });
-        return res.status(200).json(found);
+        return res.status(200).json(filterSensitive(found));
       }
 
+      // === GET by namaPasangan ===
       if (namaPasangan) {
         const slug = namaPasangan.toLowerCase();
         const found = data.find((p) => p.namaPasangan.toLowerCase() === slug);
         if (!found) return res.status(404).json({ error: "Data pengantin tidak ditemukan" });
-        return res.status(200).json(found);
+        return res.status(200).json(filterSensitive(found));
       }
 
+      // === GET by email ===
       if (email) {
-        const found = data.find((p) => p.email.toLowerCase() === email.toLowerCase());
+        const found = data.find(
+          (p) => p.email.toLowerCase() === email.toLowerCase()
+        );
         if (!found) return res.status(404).json({ error: "Data pengantin tidak ditemukan" });
-        return res.status(200).json(found);
+        return res.status(200).json(filterSensitive(found));
       }
 
       return res.status(200).json([]);
+
     } catch (err) {
       console.error("❌ GET Error:", err);
       return res.status(500).json({ error: "Gagal mengambil data pengantin" });
     }
   }
 
-  // ==== POST Tambah pengantin baru ====
+  // ==== POST Tambah Pengantin ====
   if (req.method === "POST") {
     try {
       let body = "";
@@ -83,8 +114,6 @@ export default async function handler(req, res) {
         foto,
         email,
         sandi,
-
-        // 🔥 Tambahan
         upstash_url,
         upstash_token
       } = JSON.parse(body || "{}");
@@ -119,13 +148,14 @@ export default async function handler(req, res) {
         success: true,
         data: { id, namaPasangan, upstash_url }
       });
+
     } catch (err) {
       console.error("❌ POST Error:", err);
       return res.status(500).json({ error: "Gagal menyimpan data pengantin" });
     }
   }
 
-  // ==== PUT Update data pengantin ====
+  // ==== PUT Update Pengantin ====
   if (req.method === "PUT") {
     try {
       let body = "";
@@ -146,15 +176,16 @@ export default async function handler(req, res) {
 
       return res.status(200).json({
         success: true,
-        data: data[idx]
+        data: filterSensitive(data[idx])
       });
+
     } catch (err) {
       console.error("❌ PUT Error:", err);
       return res.status(500).json({ error: "Gagal update data pengantin" });
     }
   }
 
-  // ==== DELETE pengantin ====
+  // ==== DELETE Pengantin ====
   if (req.method === "DELETE") {
     try {
       let body = "";
@@ -175,6 +206,7 @@ export default async function handler(req, res) {
         success: true,
         deleted: id
       });
+
     } catch (err) {
       console.error("❌ DELETE Error:", err);
       return res.status(500).json({ error: "Gagal menghapus data pengantin" });
