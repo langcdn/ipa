@@ -9,13 +9,12 @@ export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   if (req.method === "OPTIONS") return res.status(200).end();
 
-  // ===== Fungsi Bantu =====
+  // ===== Fungsi bantu =====
   async function getData() {
     const r = await fetch(`${UPSTASH_URL}/get/pengantin`, {
       headers: { Authorization: AUTH_TOKEN },
     });
     const data = await r.json();
-
     try {
       return data.result ? JSON.parse(data.result) : [];
     } catch {
@@ -34,69 +33,77 @@ export default async function handler(req, res) {
     });
   }
 
-  // 🔒 Helper untuk menghapus data sensitif
-  function filterSensitive(data) {
-    if (!data) return null;
-    const { sandi, upstash_token, ...safe } = data;
+  // ==== FILTER FIELD SENSITIF ====
+  function filterSensitive(p) {
+    if (!p) return null;
+    const { sandi, upstash_url, upstash_token, ...safe } = p;
     return safe;
   }
 
-  // ==== GET ====
+  // ======================================================
+  //                       GET
+  // ======================================================
   if (req.method === "GET") {
     try {
       const data = await getData();
       const { id, namaPasangan, email, tokenpasangan } = req.query;
 
-      // ⚡ NEW: tokenpasangan = namaPasangan
-      if (tokenpasangan) {
-        const slug = tokenpasangan.toLowerCase();
-        const found = data.find(
-          (p) => p.namaPasangan.toLowerCase() === slug
-        );
-
-        if (!found) {
-          return res.status(404).json({ error: "Token pasangan tidak valid" });
-        }
-
-        return res.status(200).json({
-          upstash_url: found.upstash_url || "",
-          upstash_token: found.upstash_token || ""
-        });
-      }
-
-      // === GET by ID ===
+      // ================================
+      // GET by ID (tetap aman)
+      // ================================
       if (id) {
         const found = data.find((p) => p.id === id);
         if (!found) return res.status(404).json({ error: "Data pengantin tidak ditemukan" });
         return res.status(200).json(filterSensitive(found));
       }
 
-      // === GET by namaPasangan ===
+      // ================================
+      // GET by namaPasangan (tanpa sandi & token)
+      // ================================
       if (namaPasangan) {
         const slug = namaPasangan.toLowerCase();
         const found = data.find((p) => p.namaPasangan.toLowerCase() === slug);
-        if (!found) return res.status(404).json({ error: "Data pengantin tidak ditemukan" });
+
+        if (!found)
+          return res.status(404).json({ error: "Data pengantin tidak ditemukan" });
+
+        // kalau tokenpasangan=true → kembalikan token saja
+        if (tokenpasangan === "true") {
+          return res.status(200).json({
+            upstash_url: found.upstash_url || "",
+            upstash_token: found.upstash_token || "",
+          });
+        }
+
+        // normal → aman
         return res.status(200).json(filterSensitive(found));
       }
 
-      // === GET by email ===
+      // ================================
+      // GET by Email → hanya email + sandi
+      // ================================
       if (email) {
-        const found = data.find(
-          (p) => p.email.toLowerCase() === email.toLowerCase()
-        );
-        if (!found) return res.status(404).json({ error: "Data pengantin tidak ditemukan" });
-        return res.status(200).json(filterSensitive(found));
+        const found = data.find((p) => p.email.toLowerCase() === email.toLowerCase());
+
+        if (!found)
+          return res.status(404).json({ error: "Data pengantin tidak ditemukan" });
+
+        return res.status(200).json({
+          email: found.email,
+          sandi: found.sandi,
+        });
       }
 
       return res.status(200).json([]);
-
     } catch (err) {
       console.error("❌ GET Error:", err);
       return res.status(500).json({ error: "Gagal mengambil data pengantin" });
     }
   }
 
-  // ==== POST Tambah Pengantin ====
+  // ======================================================
+  //                       POST
+  // ======================================================
   if (req.method === "POST") {
     try {
       let body = "";
@@ -129,6 +136,7 @@ export default async function handler(req, res) {
       }
 
       const data = await getData();
+
       data.push({
         id,
         namaPasangan,
@@ -146,16 +154,17 @@ export default async function handler(req, res) {
 
       return res.status(200).json({
         success: true,
-        data: { id, namaPasangan, upstash_url }
+        data: { id, namaPasangan }
       });
-
     } catch (err) {
       console.error("❌ POST Error:", err);
       return res.status(500).json({ error: "Gagal menyimpan data pengantin" });
     }
   }
 
-  // ==== PUT Update Pengantin ====
+  // ======================================================
+  //                        PUT
+  // ======================================================
   if (req.method === "PUT") {
     try {
       let body = "";
@@ -178,14 +187,15 @@ export default async function handler(req, res) {
         success: true,
         data: filterSensitive(data[idx])
       });
-
     } catch (err) {
       console.error("❌ PUT Error:", err);
       return res.status(500).json({ error: "Gagal update data pengantin" });
     }
   }
 
-  // ==== DELETE Pengantin ====
+  // ======================================================
+  //                      DELETE
+  // ======================================================
   if (req.method === "DELETE") {
     try {
       let body = "";
@@ -206,7 +216,6 @@ export default async function handler(req, res) {
         success: true,
         deleted: id
       });
-
     } catch (err) {
       console.error("❌ DELETE Error:", err);
       return res.status(500).json({ error: "Gagal menghapus data pengantin" });
